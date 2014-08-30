@@ -106,6 +106,9 @@ sub date_regex {
     ## Ambiguous, but potentially valid date formats
     push @regexes, $ambiguous_dates;
 
+    ## Our vague strings which require assumptions to make complete.
+    push @regexes, $vague_datestring;
+
     state $returned_regex = join '|', @regexes;
     return qr/$returned_regex/i;
 }
@@ -116,7 +119,9 @@ sub parse_string_to_date {
     my ($d) = @_;
 
     return unless ($d =~ date_regex());    # Only handle white-listed strings, even if they might otherwise work.
-    if ($d =~ $ambiguous_dates_matches) {
+    if ($d =~ /^$vague_datestring$/) {
+        return parse_vague_string_to_date($d);
+    } elsif ($d =~ $ambiguous_dates_matches) {
         # guesswork for ambigous DMY/MDY and switch to ISO
         my ($month, $day, $year) = ($+{'m'}, $+{'d'}, $+{'y'});    # Assume MDY, even though it's crazy, for backward compatibility
 

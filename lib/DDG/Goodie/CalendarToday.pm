@@ -30,31 +30,20 @@ my $css = share("style.css")->slurp;
 
 my $month_regex = month_regex();
 my $date_regex  = date_regex();
+my $vague_regex = vague_datestring_regex();
 
 handle remainder => sub {
     my $query       = $_;
     my $date_object = DateTime->now;
     my ($currentDay, $currentMonth, $currentYear) = ($date_object->day(), $date_object->month(), $date_object->year());
-    my $highlightDay = 0; # Initialized, but won't match, by default.
-    if ($query) {
-        my ($date_string, $other_format) = $query =~ qr#($date_regex)|((?:(?:next|last) )?$month_regex(?: [0-9]{4})?)#i;
-        if ($date_string) {
-            $date_object = parse_string_to_date($date_string);
+    my $highlightDay = 0;    # Initialized, but won't match, by default.
+    if (my ($date_string) = $query =~ qr#($date_regex)#i) {
+        $date_object = parse_string_to_date($date_string);
 
-            return unless $date_object;
-            $highlightDay = $date_object->day();
-        } elsif ($other_format) {
-            $date_object = parse_vague_string_to_date($other_format);
-
-            return unless $date_object;
-            # highlight today if current month is given
-            if (($date_object->year() eq $currentYear) && ($date_object->month() eq $currentMonth)) {
-                $highlightDay = $currentDay;
-            }
-        }
-    } else {
-        $highlightDay = $currentDay;
+        return unless $date_object;
+        $highlightDay = $date_object->day() unless ($date_string =~ /^$vague_regex$/);    # Only set if they weren't vague
     }
+    $highlightDay ||= $currentDay if (($date_object->year() eq $currentYear) && ($date_object->month() eq $currentMonth));
 
     my $the_year  = $date_object->year();
     my $the_month = $date_object->month();
@@ -62,7 +51,7 @@ handle remainder => sub {
     my $start = parse_string_to_date($the_year . "-" . $the_month . "-1");
     return format_result({
             first_day     => $start,
-            first_day_num => $start->day_of_week() % 7, # 0=Sunday
+            first_day_num => $start->day_of_week() % 7,     # 0=Sunday
             last_day      => DateTime->last_day_of_month(
                 year  => $the_year,
                 month => $the_month,
